@@ -1,0 +1,245 @@
+import { useState } from "react"
+import { Link, useNavigate, useParams } from "react-router-dom"
+import { ArrowLeft, Lock as LockIcon, Repeat, ExternalLink, ShieldCheck } from "lucide-react"
+import { useLock } from "@/hooks/useLocks"
+import { useWallet } from "@/hooks/useWallet"
+import { withdrawLock, extendLock } from "@/lib/token-locker"
+import { withdrawLpLock, extendLpLock } from "@/lib/lp-locker"
+import { Card } from "@/components/ui/Card"
+import { Button } from "@/components/ui/Button"
+import { Input } from "@/components/ui/Input"
+import { Badge } from "@/components/ui/Badge"
+import { TokenAvatar } from "@/components/ui/TokenAvatar"
+import { StatusBadge } from "@/components/ui/StatusBadge"
+import { DexBadge } from "@/components/ui/DexBadge"
+import { CountdownTimer } from "@/components/ui/CountdownTimer"
+import { LockProgressBar } from "@/components/ui/LockProgressBar"
+import {
+  formatAmount,
+  formatUsd,
+  formatDateTime,
+  shortAddress,
+} from "@/lib/utils"
+import type { Lock } from "@/types/lock"
+
+export function LockDetail() {
+  const { id } = useParams<{ id: string }>()
+  const { data: lock, loading, error, reload } = useLock(id)
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-10 md:px-6">
+        <div className="h-8 w-32 animate-pulse rounded bg-card" />
+        <div className="mt-6 h-96 animate-pulse rounded-xl border border-border bg-card/50" />
+      </div>
+    )
+  }
+
+  if (error || !lock) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-20 text-center md:px-6">
+        <h1 className="text-2xl font-bold">Lock not found</h1>
+        <p className="mt-2 text-muted-foreground">
+          We couldn&apos;t find a lock with id #{id}.
+        </p>
+        <Link to="/app/locks">
+          <Button variant="outline" className="mt-6">
+            <ArrowLeft className="h-4 w-4" />
+            Back to my locks
+          </Button>
+        </Link>
+      </div>
+    )
+  }
+
+  return <LockDetailView lock={lock} onChange={reload} />
+}
+
+function LockDetailView({ lock, onChange }: { lock: Lock; onChange: () => void }) {
+  const { address } = useWallet()
+  const navigate = useNavigate()
+  const isLp = lock.kind === "lp"
+
+  const now = Date.now()
+  const isBeneficiary = address === lock.beneficiary
+  const isCreator = address === lock.creator
+  const canWithdraw = isBeneficiary && lock.unlockAt <= now && lock.status !== "withdrawn"
+  const canExtend = isCreator && lock.status !== "withdrawn"
+
+  const [busy, setBusy] = useState<"withdraw" | "extend" | null>(null)
+  const [extendOpen, setExtendOpen] = useState(false)
+  const [newDate, setNewDate] = useState("")
+
+  async function handleWithdraw() {
+    setBusy("withdraw")
+    try {
+      await (isLp ? withdrawLpLock(lock.id) : withdrawLock(lock.id))
+      onChange()
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function handleExtend() {
+    if (!newDate) return
+    const ts = new Date(newDate).getTime()
+    if (ts <= lock.unlockAt) return
+    setBusy("extend")
+    try {
+      await (isLp ? extendLpLock(lock.id, ts) : extendLock(lock.id, ts))
+      setExtendOpen(false)
+      onChange()
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-10 md:px-6">
+      <button
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back
+      </button>
+
+      <Card className="mt-4 overflow-hidden">
+        <div className="flex flex-col gap-4 border-b border-border p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <TokenAvatar symbol={lock.token.symbol} size="lg" />
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold">{lock.token.symbol}</h1>
+                {isLp && lock.dex && <DexBadge dex={lock.dex} />}
+                <Badge variant="outline">{isLp ? "LP Lock" : "Token Lock"}</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">{lock.token.name}</p>
+            </div>
+          </div>
+          <StatusBadge status={lock.status} />
+        </div>
+
+        <div className="grid gap-px bg-border sm:grid-cols-2">
+          <Field label="Locked amount" className="bg-card">
+            <span className="text-lg font-semibold tabular-nums">
+              {formatAmount(lock.amount)} {lock.token.symbol}
+            </span>
+            <span className="ml-2 text-sm text-muted-foreground">{formatUsd(lock.usdValue)}</span>
+          </Field>
+          <Field label="Lock ID" className="bg-card">
+            <span className="font-mono">#{lock.id}</span>
+            {lock.extendedCount > 0 && (
+              <span className="ml-3 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <Repeat className="h-3 w-3" />
+                Extended {lock.extendedCount}×
+              </span>
+            )}
+          </Field>
+          <Field label="Locked on" className="bg-card">
+            {formatDateTime(lock.createdAt)}
+          </Field>
+          <Field label="Unlocks on" className="bg-card">
+            {formatDateTime(lock.unlockAt)}
+          </Field>
+          <Field label="Creator" className="bg-card">
+            <span className="font-mono">{shortAddress(lock.creator)}</span>
+            {isCreator && <Badge className="ml-2">You</Badge>}
+          </Field>
+          <Field label="Beneficiary" className="bg-card">
+            <span className="font-mono">{shortAddress(lock.beneficiary)}</span>
+            {isBeneficiary && <Badge className="ml-2">You</Badge>}
+          </Field>
+        </div>
+
+        <div className="border-t border-border p-6">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-sm font-medium text-muted-foreground">Time remaining</span>
+            <CountdownTimer target={lock.unlockAt} compact className="text-sm font-medium" />
+          </div>
+          <CountdownTimer target={lock.unlockAt} className="mb-5 justify-center sm:justify-start" />
+          <LockProgressBar createdAt={lock.createdAt} unlockAt={lock.unlockAt} />
+        </div>
+
+        {(canWithdraw || canExtend) && (
+          <div className="flex flex-col gap-3 border-t border-border p-6 sm:flex-row">
+            {canWithdraw && (
+              <Button onClick={handleWithdraw} loading={busy === "withdraw"} className="flex-1">
+                <LockIcon className="h-4 w-4" />
+                Withdraw tokens
+              </Button>
+            )}
+            {canExtend && (
+              <Button
+                variant={canWithdraw ? "outline" : "primary"}
+                onClick={() => setExtendOpen((v) => !v)}
+                className="flex-1"
+              >
+                <Repeat className="h-4 w-4" />
+                Extend lock
+              </Button>
+            )}
+          </div>
+        )}
+
+        {extendOpen && canExtend && (
+          <div className="border-t border-border bg-secondary/30 p-6">
+            <label className="text-sm font-medium" htmlFor="new-unlock">
+              New unlock date
+            </label>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Must be later than the current unlock date. Locks can only be extended, never shortened.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Input
+                id="new-unlock"
+                type="date"
+                value={newDate}
+                onChange={(e) => setNewDate(e.target.value)}
+                className="flex-1"
+              />
+              <Button onClick={handleExtend} loading={busy === "extend"} disabled={!newDate}>
+                Confirm extension
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {lock.status === "locked" && (
+        <div className="mt-4 flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
+          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-success" />
+          <p>
+            These tokens are secured by the StellarLock contract until the unlock date. Neither the
+            creator nor StellarLock can move them early.{" "}
+            <Link
+              to={`/explore/${lock.token.address}`}
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              View token explorer <ExternalLink className="h-3 w-3" />
+            </Link>
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Field({
+  label,
+  children,
+  className,
+}: {
+  label: string
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className={className}>
+      <div className="p-5">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+        <div className="mt-1.5 flex items-center">{children}</div>
+      </div>
+    </div>
+  )
+}

@@ -129,6 +129,10 @@
     "newUnlockDate": "New unlock date",
     "extendHint": "Must be later than the current unlock date. Locks can only be extended, never shortened.",
     "confirmExtension": "Confirm extension",
+    "transferBeneficiary": "Transfer beneficiary",
+    "newBeneficiary": "New beneficiary address",
+    "transferHint": "Transfer withdrawal rights to a new Stellar address. This action is irreversible.",
+    "confirmTransfer": "Confirm transfer",
     "securityNotice": "These tokens are secured by the StellarLock contract until the unlock date. Neither the creator nor StellarLock can move them early.",
     "viewExplorer": "View token explorer"
   },

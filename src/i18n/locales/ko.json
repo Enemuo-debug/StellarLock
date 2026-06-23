@@ -129,6 +129,10 @@
     "newUnlockDate": "새 잠금 해제 날짜",
     "extendHint": "현재 잠금 해제 날짜보다 늦어야 합니다. 잠금은 연장만 가능하며, 절대 단축할 수 없습니다.",
     "confirmExtension": "연장 확인",
+    "transferBeneficiary": "수혜자 이전",
+    "newBeneficiary": "새 수혜자 주소",
+    "transferHint": "인출 권한을 새 Stellar 주소로 이전합니다. 이 작업은 되돌릴 수 없습니다.",
+    "confirmTransfer": "이전 확인",
     "securityNotice": "이 토큰들은 잠금 해제 날짜까지 StellarLock 컨트랙트에 의해 보호됩니다. 생성자도 StellarLock도 조기에 이동할 수 없습니다.",
     "viewExplorer": "토큰 탐색기 보기"
   },

@@ -178,6 +178,21 @@ export async function withdrawLock(
   )
 }
 
+export async function transferBeneficiary(
+  id: string,
+  newBeneficiary: string,
+  sourceAddress: string,
+  signTransaction: (xdr: string) => Promise<{ signedTxXdr: string }>,
+): Promise<void> {
+  await submitCall(
+    CONTRACTS.tokenLocker,
+    "transfer_beneficiary",
+    [idArg(id), addressArg(newBeneficiary)],
+    sourceAddress,
+    signTransaction,
+  )
+}
+
 export async function extendLock(
   id: string,
   newUnlockAt: number,

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, Lock as LockIcon, Repeat, ExternalLink, ShieldCheck } from "lucide-react"
+import { ArrowLeft, Lock as LockIcon, Repeat, ExternalLink, ShieldCheck, UserRoundPen } from "lucide-react"
+import { Helmet } from "react-helmet-async"
 import { useTranslation } from "react-i18next"
 import { useLock } from "@/hooks/useLocks"
 import { useWallet } from "@/hooks/useWallet"
-import { withdrawLock, extendLock } from "@/lib/token-locker"
-import { withdrawLpLock, extendLpLock } from "@/lib/lp-locker"
+import { withdrawLock, extendLock, transferBeneficiary } from "@/lib/token-locker"
+import { withdrawLpLock, extendLpLock, transferLpBeneficiary } from "@/lib/lp-locker"
 import { trackEvent } from "@/lib/analytics"
 import { Card } from "@/components/ui/Card"
 import { Button } from "@/components/ui/Button"
@@ -55,7 +56,15 @@ export function LockDetail() {
     )
   }
 
-  return <LockDetailView lock={lock} onChange={reload} />
+  return (
+    <>
+      <Helmet>
+        <title>Lock #{lock.id} — {formatAmount(lock.amount)} {lock.token.symbol} locked until {formatDateTime(lock.unlockAt)} | StellarLock</title>
+        <meta name="description" content={`Lock #${lock.id}: ${formatAmount(lock.amount)} ${lock.token.symbol} locked until ${formatDateTime(lock.unlockAt)} on StellarLock.`} />
+      </Helmet>
+      <LockDetailView lock={lock} onChange={reload} />
+    </>
+  )
 }
 
 function LockDetailView({ lock, onChange }: { lock: Lock; onChange: () => void }) {
@@ -69,11 +78,15 @@ function LockDetailView({ lock, onChange }: { lock: Lock; onChange: () => void }
   const isCreator = address === lock.creator
   const canWithdraw = isBeneficiary && lock.unlockAt <= now && lock.status !== "withdrawn"
   const canExtend = isCreator && lock.status !== "withdrawn"
+  const canTransfer = isBeneficiary && lock.status !== "withdrawn"
 
-  const [busy, setBusy] = useState<"withdraw" | "extend" | null>(null)
+  const [busy, setBusy] = useState<"withdraw" | "extend" | "transfer" | null>(null)
   const [extendOpen, setExtendOpen] = useState(false)
+  const [transferOpen, setTransferOpen] = useState(false)
   const [newDate, setNewDate] = useState("")
+  const [newBeneficiary, setNewBeneficiary] = useState("")
   const extendPanelRef = useRef<HTMLDivElement>(null)
+  const transferPanelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (extendOpen) {
@@ -81,6 +94,13 @@ function LockDetailView({ lock, onChange }: { lock: Lock; onChange: () => void }
       input?.focus()
     }
   }, [extendOpen])
+
+  useEffect(() => {
+    if (transferOpen) {
+      const input = transferPanelRef.current?.querySelector("input")
+      input?.focus()
+    }
+  }, [transferOpen])
 
   async function handleWithdraw() {
     setBusy("withdraw")
@@ -106,6 +126,22 @@ function LockDetailView({ lock, onChange }: { lock: Lock; onChange: () => void }
         : extendLock(lock.id, ts, address!, signTransaction))
       trackEvent("lock_extend", { kind: lock.kind })
       setExtendOpen(false)
+      onChange()
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function handleTransfer() {
+    if (!newBeneficiary.trim()) return
+    setBusy("transfer")
+    try {
+      await (isLp
+        ? transferLpBeneficiary(lock.id, newBeneficiary.trim(), address!, signTransaction)
+        : transferBeneficiary(lock.id, newBeneficiary.trim(), address!, signTransaction))
+      trackEvent("lock_transfer_beneficiary", { kind: lock.kind })
+      setTransferOpen(false)
+      setNewBeneficiary("")
       onChange()
     } finally {
       setBusy(null)
@@ -222,7 +258,7 @@ function LockDetailView({ lock, onChange }: { lock: Lock; onChange: () => void }
             </div>
           </div>
         )}
-        {(canWithdraw || canExtend) && (
+        {(canWithdraw || canExtend || canTransfer) && (
           <div className="flex flex-col gap-3 border-t border-border p-6 sm:flex-row">
             {canWithdraw && (
               <Button onClick={handleWithdraw} loading={busy === "withdraw"} className="flex-1">
@@ -239,6 +275,17 @@ function LockDetailView({ lock, onChange }: { lock: Lock; onChange: () => void }
               >
                 <Repeat className="h-4 w-4" />
                 {t("lockDetail.extendLock")}
+              </Button>
+            )}
+            {canTransfer && (
+              <Button
+                variant="outline"
+                onClick={() => setTransferOpen((v) => !v)}
+                aria-expanded={transferOpen}
+                className="flex-1"
+              >
+                <UserRoundPen className="h-4 w-4" />
+                {t("lockDetail.transferBeneficiary")}
               </Button>
             )}
           </div>
@@ -262,6 +309,29 @@ function LockDetailView({ lock, onChange }: { lock: Lock; onChange: () => void }
               />
               <Button onClick={handleExtend} loading={busy === "extend"} disabled={!newDate}>
                 {t("lockDetail.confirmExtension")}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {transferOpen && canTransfer && (
+          <div ref={transferPanelRef} role="region" aria-label={t("lockDetail.transferBeneficiary")} className="border-t border-border bg-secondary/30 p-6">
+            <label className="text-sm font-medium" htmlFor="new-beneficiary">
+              {t("lockDetail.newBeneficiary")}
+            </label>
+            <p className="mb-3 text-xs text-muted-foreground">
+              {t("lockDetail.transferHint")}
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Input
+                id="new-beneficiary"
+                placeholder="G…"
+                value={newBeneficiary}
+                onChange={(e) => setNewBeneficiary(e.target.value)}
+                className="flex-1 font-mono"
+              />
+              <Button onClick={handleTransfer} loading={busy === "transfer"} disabled={!newBeneficiary.trim()}>
+                {t("lockDetail.confirmTransfer")}
               </Button>
             </div>
           </div>

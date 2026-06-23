@@ -129,6 +129,10 @@
     "newUnlockDate": "Nueva fecha de desbloqueo",
     "extendHint": "Debe ser posterior a la fecha de desbloqueo actual. Los bloqueos solo pueden extenderse, nunca acortarse.",
     "confirmExtension": "Confirmar extensión",
+    "transferBeneficiary": "Transferir beneficiario",
+    "newBeneficiary": "Nueva dirección de beneficiario",
+    "transferHint": "Transfiere los derechos de retiro a una nueva dirección Stellar. Esta acción es irreversible.",
+    "confirmTransfer": "Confirmar transferencia",
     "securityNotice": "Estos tokens están asegurados por el contrato StellarLock hasta la fecha de desbloqueo. Ni el creador ni StellarLock pueden moverlos anticipadamente.",
     "viewExplorer": "Ver explorador de tokens"
   },

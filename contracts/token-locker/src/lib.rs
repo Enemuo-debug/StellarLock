@@ -54,6 +54,17 @@ fn push_index(env: &Env, key: DataKey, id: u64) {
     env.storage().persistent().set(&key, &ids);
 }
 
+fn remove_from_index(env: &Env, key: DataKey, id: u64) {
+    let ids: Vec<u64> = env.storage().persistent().get(&key).unwrap_or(vec![env]);
+    let mut filtered: Vec<u64> = vec![env];
+    for existing in ids.iter() {
+        if existing != id {
+            filtered.push_back(existing);
+        }
+    }
+    env.storage().persistent().set(&key, &filtered);
+}
+
 fn get_index(env: &Env, key: DataKey) -> Vec<u64> {
     env.storage().persistent().get(&key).unwrap_or(vec![env])
 }
@@ -87,7 +98,6 @@ pub struct TokenLocker;
 #[contractimpl]
 impl TokenLocker {
     /// Lock `amount` of `token` until `unlock_at` (unix seconds).
-    /// The caller must be `creator` and must have approved the transfer.
     /// Returns the new lock id.
     pub fn create_lock(
         env: Env,
@@ -178,7 +188,7 @@ impl TokenLocker {
         env.events().publish((Symbol::new(&env, "withdrawn"),), id);
     }
 
-    /// Extend the unlock date (creator only, can only increase).
+    /// Extend the unlock date. Creator only, can only increase.
     pub fn extend(env: Env, id: u64, new_unlock_at: u64) {
         let mut lock = load_lock(&env, id);
         lock.creator.require_auth();
@@ -191,6 +201,22 @@ impl TokenLocker {
 
         save_lock(&env, &lock);
         env.events().publish((Symbol::new(&env, "extended"),), id);
+    }
+
+    /// Transfer the beneficiary role to a new address. Current beneficiary only.
+    pub fn transfer_beneficiary(env: Env, id: u64, new_beneficiary: Address) {
+        let mut lock = load_lock(&env, id);
+        lock.beneficiary.require_auth();
+
+        assert!(!lock.withdrawn, "already withdrawn");
+
+        remove_from_index(&env, DataKey::ByBeneficiary(lock.beneficiary.clone()), id);
+        push_index(&env, DataKey::ByBeneficiary(new_beneficiary.clone()), id);
+
+        lock.beneficiary = new_beneficiary;
+        save_lock(&env, &lock);
+
+        env.events().publish((Symbol::new(&env, "beneficiary_transferred"),), id);
     }
 
     // ── Read methods ──────────────────────────────────────────────────────────

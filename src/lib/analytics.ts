@@ -6,6 +6,7 @@ type EventName =
   | "lock_create_lp"
   | "lock_withdraw"
   | "lock_extend"
+  | "lock_transfer_beneficiary"
   | "explorer_search"
 
 type EventProps = Record<string, string | number | boolean>

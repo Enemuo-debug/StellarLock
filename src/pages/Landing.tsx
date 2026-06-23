@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom"
+import { Helmet } from "react-helmet-async"
 import { Trans, useTranslation } from "react-i18next"
 import {
   ShieldCheck,
@@ -27,6 +28,10 @@ export function Landing() {
 
   return (
     <div>
+      <Helmet>
+        <title>StellarLock — Token & LP Locks on Stellar</title>
+        <meta name="description" content="Lock tokens and liquidity on Stellar. Prove to your community you haven't rugged with a public, verifiable lock explorer." />
+      </Helmet>
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="bg-grid bg-grid-fade absolute inset-0 -z-10" aria-hidden />

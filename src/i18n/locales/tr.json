@@ -129,6 +129,10 @@
     "newUnlockDate": "Yeni kilit açma tarihi",
     "extendHint": "Mevcut kilit açma tarihinden sonra olmalıdır. Kilitler yalnızca uzatılabilir, asla kısaltılamaz.",
     "confirmExtension": "Uzatmayı onayla",
+    "transferBeneficiary": "Lehdarı devret",
+    "newBeneficiary": "Yeni lehdar adresi",
+    "transferHint": "Çekim haklarını yeni bir Stellar adresine devredin. Bu işlem geri alınamaz.",
+    "confirmTransfer": "Devri onayla",
     "securityNotice": "Bu tokenler kilit açma tarihine kadar StellarLock sözleşmesi tarafından güvence altındadır. Ne oluşturan ne de StellarLock bunları erken taşıyabilir.",
     "viewExplorer": "Token gezginini görüntüle"
   },

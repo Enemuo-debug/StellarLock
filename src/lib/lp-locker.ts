@@ -16,11 +16,34 @@ export interface CreateLpLockArgs {
   unlockAt: number // unix seconds
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function idArg(id: string): xdr.ScVal {
+  return nativeToScVal(BigInt(id), { type: "u64" })
+}
+
+function addressArg(addr: string): xdr.ScVal {
+  return new Address(addr).toScVal()
+}
+
+/**
+ * Encode the Dex enum as a Soroban contracttype enum ScVal.
+ * On-chain: enum Dex { Aquarius = 0, Soroswap = 1 }
+ * Soroban encodes enum variants as a single-element vec: [Symbol("VariantName")]
+ */
+function dexArg(dex: Dex): xdr.ScVal {
+  const variant = dex === "aquarius" ? "Aquarius" : "Soroswap"
+  return xdr.ScVal.scvVec([xdr.ScVal.scvSymbol(variant)])
+}
+
 // ── Converters ────────────────────────────────────────────────────────────────
 
 function toLpLock(raw: Record<string, unknown>): Lock {
   const poolShare = raw.pool_share as string
-  const dex = (raw.dex as string).toLowerCase() as Dex
+  const dexRaw = raw.dex as { tag?: string } | string
+  const dex: Dex = (typeof dexRaw === "object" && dexRaw?.tag
+    ? dexRaw.tag.toLowerCase()
+    : String(dexRaw).toLowerCase()) as Dex
   const tokenA = raw.token_a as string
   const tokenB = raw.token_b as string
 
@@ -48,14 +71,6 @@ function toLpLock(raw: Record<string, unknown>): Lock {
     unlockAt: Number(raw.unlock_at) * 1000,
     extendedCount: Number(raw.extended_count),
   }
-}
-
-function idArg(id: string): xdr.ScVal {
-  return nativeToScVal(BigInt(id), { type: "u64" })
-}
-
-function addressArg(addr: string): xdr.ScVal {
-  return new Address(addr).toScVal()
 }
 
 // ── Read methods ──────────────────────────────────────────────────────────────
@@ -88,7 +103,7 @@ export async function createLpLock(
   const scArgs: xdr.ScVal[] = [
     addressArg(sourceAddress),
     addressArg(args.poolShareAddress),
-    nativeToScVal(args.dex),
+    dexArg(args.dex),
     addressArg(args.tokenA),
     addressArg(args.tokenB),
     nativeToScVal(BigInt(Math.round(args.amount * 1e7)), { type: "i128" }),
@@ -118,6 +133,21 @@ export async function extendLpLock(
     CONTRACTS.lpLocker,
     "extend",
     [idArg(id), nativeToScVal(BigInt(Math.floor(newUnlockAt)), { type: "u64" })],
+    sourceAddress,
+    signTransaction,
+  )
+}
+
+export async function transferLpBeneficiary(
+  id: string,
+  newBeneficiary: string,
+  sourceAddress: string,
+  signTransaction: (xdr: string) => Promise<{ signedTxXdr: string }>,
+): Promise<void> {
+  await submitCall(
+    CONTRACTS.lpLocker,
+    "transfer_beneficiary",
+    [idArg(id), addressArg(newBeneficiary)],
     sourceAddress,
     signTransaction,
   )

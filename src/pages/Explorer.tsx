@@ -1,5 +1,6 @@
 import { useParams, Link } from "react-router-dom"
 import { Lock, Coins, CalendarClock, PieChart, ShieldCheck, ArrowLeft, ExternalLink, SearchX } from "lucide-react"
+import { Helmet } from "react-helmet-async"
 import { Trans, useTranslation } from "react-i18next"
 import { useLocksByToken } from "@/hooks/useLocks"
 import { TokenAvatar } from "@/components/ui/TokenAvatar"
@@ -19,6 +20,12 @@ export function Explorer() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
+      {data && (
+        <Helmet>
+          <title>{data.token.symbol} Liquidity Locks | StellarLock</title>
+          <meta name="description" content={`${formatAmount(data.totalLocked)} ${data.token.symbol} locked across ${data.activeLocks} active locks on StellarLock.`} />
+        </Helmet>
+      )}
       <Link
         to="/"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"

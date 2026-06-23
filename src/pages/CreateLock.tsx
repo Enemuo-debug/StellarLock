@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Coins, Droplets } from "lucide-react"
+import { Helmet } from "react-helmet-async"
 import { useTranslation } from "react-i18next"
 import { ConnectGate } from "@/components/layout/ConnectGate"
 import { Card } from "@/components/ui/Card"
@@ -15,6 +16,10 @@ export function CreateLock() {
 
   return (
     <div className="mx-auto max-w-xl px-4 py-10">
+      <Helmet>
+        <title>Create a Lock | StellarLock</title>
+        <meta name="description" content="Lock tokens or LP positions in an immutable Soroban smart contract on Stellar." />
+      </Helmet>
       <div className="mb-6 text-center">
         <h1 className="text-2xl font-bold tracking-tight">{t("createLock.title")}</h1>
         <p className="mt-1 text-sm text-muted-foreground">

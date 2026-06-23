@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Plus, Wallet, Layers } from "lucide-react"
+import { Helmet } from "react-helmet-async"
 import { useTranslation } from "react-i18next"
 import { useWallet } from "@/hooks/useWallet"
 import { useMyLocks } from "@/hooks/useLocks"
@@ -35,6 +36,10 @@ export function MyLocks() {
 
   return (
     <ConnectGate title={t("connectGate.title")}>
+      <Helmet>
+        <title>My Locks | StellarLock</title>
+        <meta name="description" content="Manage and withdraw your locked token and LP positions on StellarLock." />
+      </Helmet>
       <div className="mx-auto max-w-6xl px-4 py-10 md:px-6">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>

@@ -129,6 +129,10 @@
     "newUnlockDate": "新解锁日期",
     "extendHint": "必须晚于当前解锁日期。锁定只能延长，不能缩短。",
     "confirmExtension": "确认延长",
+    "transferBeneficiary": "转移受益人",
+    "newBeneficiary": "新受益人地址",
+    "transferHint": "将提取权转移至新的 Stellar 地址。此操作不可逆。",
+    "confirmTransfer": "确认转移",
     "securityNotice": "这些代币由 StellarLock 合约保护直到解锁日期。创建者和 StellarLock 都无法提前移动它们。",
     "viewExplorer": "查看代币浏览器"
   },

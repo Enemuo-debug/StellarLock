@@ -1,7 +1,7 @@
 #![no_std]
 use soroban_sdk::{
     contract, contractimpl, contracttype, token, vec,
-    Address, Env, String, Symbol, Vec,
+    Address, Env, Symbol, Vec,
 };
 
 // ── Storage keys ─────────────────────────────────────────────────────────────
@@ -16,12 +16,20 @@ pub enum DataKey {
 
 // ── On-chain types ────────────────────────────────────────────────────────────
 
+/// Typed DEX enum — avoids free-form string encoding mismatches.
+#[contracttype]
+#[derive(Clone, PartialEq)]
+pub enum Dex {
+    Aquarius,
+    Soroswap,
+}
+
 #[contracttype]
 #[derive(Clone)]
 pub struct LpLock {
     pub id: u64,
     pub pool_share: Address,
-    pub dex: String,
+    pub dex: Dex,
     pub token_a: Address,
     pub token_b: Address,
     pub amount: i128,
@@ -45,6 +53,17 @@ fn push_index(env: &Env, key: DataKey, id: u64) {
     let mut ids: Vec<u64> = env.storage().persistent().get(&key).unwrap_or(vec![env]);
     ids.push_back(id);
     env.storage().persistent().set(&key, &ids);
+}
+
+fn remove_from_index(env: &Env, key: DataKey, id: u64) {
+    let ids: Vec<u64> = env.storage().persistent().get(&key).unwrap_or(vec![env]);
+    let mut filtered: Vec<u64> = vec![env];
+    for existing in ids.iter() {
+        if existing != id {
+            filtered.push_back(existing);
+        }
+    }
+    env.storage().persistent().set(&key, &filtered);
 }
 
 fn get_index(env: &Env, key: DataKey) -> Vec<u64> {
@@ -85,7 +104,7 @@ impl LpLocker {
         env: Env,
         creator: Address,
         pool_share: Address,
-        dex: String,
+        dex: Dex,
         token_a: Address,
         token_b: Address,
         amount: i128,
@@ -147,7 +166,7 @@ impl LpLocker {
         env.events().publish((Symbol::new(&env, "lp_withdrawn"),), id);
     }
 
-    /// Extend the unlock date (creator only, can only increase).
+    /// Extend the unlock date. Creator only, can only increase.
     pub fn extend(env: Env, id: u64, new_unlock_at: u64) {
         let mut lock = load_lock(&env, id);
         lock.creator.require_auth();
@@ -160,6 +179,22 @@ impl LpLocker {
 
         save_lock(&env, &lock);
         env.events().publish((Symbol::new(&env, "lp_extended"),), id);
+    }
+
+    /// Transfer the beneficiary role to a new address. Current beneficiary only.
+    pub fn transfer_beneficiary(env: Env, id: u64, new_beneficiary: Address) {
+        let mut lock = load_lock(&env, id);
+        lock.beneficiary.require_auth();
+
+        assert!(!lock.withdrawn, "already withdrawn");
+
+        remove_from_index(&env, DataKey::ByBeneficiary(lock.beneficiary.clone()), id);
+        push_index(&env, DataKey::ByBeneficiary(new_beneficiary.clone()), id);
+
+        lock.beneficiary = new_beneficiary;
+        save_lock(&env, &lock);
+
+        env.events().publish((Symbol::new(&env, "beneficiary_transferred"),), id);
     }
 
     // ── Read methods ──────────────────────────────────────────────────────────

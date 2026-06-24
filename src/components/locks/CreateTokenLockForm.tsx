@@ -25,9 +25,8 @@ export function CreateTokenLockForm() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const validTokenAddress = tokenAddress.trim().length === 56 && tokenAddress.trim().startsWith("C")
-    ? tokenAddress.trim()
-    : undefined
+  const validTokenAddress =
+    tokenAddress.trim().length === 56 && tokenAddress.trim().startsWith("C") ? tokenAddress.trim() : undefined
   const { data: balance, loading: balanceLoading } = useTokenBalance(validTokenAddress, address ?? null)
 
   const presets = [
@@ -57,9 +56,7 @@ export function CreateTokenLockForm() {
           amount: Number(amount),
           beneficiary: beneficiary.trim() || address!,
           unlockAt: Math.floor(unlockTs / 1000),
-          vesting: vesting
-            ? { start: Math.floor(Date.now() / 1000), end: Math.floor(unlockTs / 1000) }
-            : undefined,
+          vesting: vesting ? { start: Math.floor(Date.now() / 1000), end: Math.floor(unlockTs / 1000) } : undefined,
         },
         address!,
         signTransaction,
@@ -91,9 +88,7 @@ export function CreateTokenLockForm() {
           onChange={(e) => setTokenAddress(e.target.value)}
           className="font-mono"
         />
-        <p className="text-xs text-muted-foreground">
-          {t("tokenForm.tokenHint")}
-        </p>
+        <p className="text-xs text-muted-foreground">{t("tokenForm.tokenHint")}</p>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -143,9 +138,7 @@ export function CreateTokenLockForm() {
           value={beneficiary}
           onChange={(e) => setBeneficiary(e.target.value)}
         />
-        <p className="text-xs text-muted-foreground">
-          {t("tokenForm.beneficiaryHint")}
-        </p>
+        <p className="text-xs text-muted-foreground">{t("tokenForm.beneficiaryHint")}</p>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -180,9 +173,7 @@ export function CreateTokenLockForm() {
         />
         <span className="text-sm">
           <span className="font-medium">{t("tokenForm.vestingLabel")}</span>
-          <span className="block text-muted-foreground">
-            {t("tokenForm.vestingDesc")}
-          </span>
+          <span className="block text-muted-foreground">{t("tokenForm.vestingDesc")}</span>
         </span>
       </label>
 
@@ -194,7 +185,11 @@ export function CreateTokenLockForm() {
             <>
               {" "}
               <Trans i18nKey="tokenForm.fundsUnlockOn" values={{ date: formatDate(unlockTs) }}>
-                Funds unlock on <span className="font-medium text-foreground">{{ date: formatDate(unlockTs) } as unknown as string}</span>.
+                Funds unlock on{" "}
+                <span className="font-medium text-foreground">
+                  {{ date: formatDate(unlockTs) } as unknown as string}
+                </span>
+                .
               </Trans>
             </>
           )}
@@ -203,7 +198,10 @@ export function CreateTokenLockForm() {
 
       <div aria-live="polite" aria-atomic="true">
         {error && (
-          <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+          >
             {error}
           </div>
         )}

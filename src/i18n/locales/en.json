@@ -66,6 +66,15 @@
     "unlockDate": "Unlock date",
     "vestingLabel": "Linear vesting",
     "vestingDesc": "Release gradually from now until the unlock date, instead of all at once.",
+    "vestingTemplate": "Vesting schedule",
+    "vestingTemplateHint": "Choose a preset vesting schedule or set a custom unlock date.",
+    "vestingTemplateCustom": "Custom",
+    "vestingTemplateLinear6m": "6-month linear",
+    "vestingTemplateLinear1y": "1-year linear",
+    "vestingTemplateLinear2y": "2-year linear",
+    "vestingTemplateQuarterly": "Quarterly (25% per quarter)",
+    "vestingStart": "Vesting starts",
+    "vestingEnd": "Vesting ends",
     "lockInfo": "Locks are immutable: you can extend the unlock date later, but never shorten it.",
     "fundsUnlockOn": "Funds unlock on <1>{{date}}</1>.",
     "balance": "Balance",
@@ -167,6 +176,8 @@
     "recentLocks": "Recent Locks",
     "upcomingUnlocks": "Upcoming Unlocks",
     "featuredTokens": "Featured Tokens",
+    "recentActivity": "Recent Activity",
+    "noRecentActivity": "No recent activity yet.",
     "totalLocks": "Total Locks",
     "totalValueLocked": "Total Value Locked",
     "tokensSecured": "Tokens Secured",
@@ -200,5 +211,11 @@
     "unlocksIn": "Unlocks in",
     "lock": "Lock #{{id}}",
     "view": "View"
+  },
+  "wallet": {
+    "disconnected": "Wallet disconnected",
+    "disconnectedDesc": "Your Freighter wallet was disconnected or the extension became unavailable. Please reconnect to continue.",
+    "networkChanged": "Network changed",
+    "networkChangedDesc": "Your wallet's network changed. Please reconnect to continue using StellarLock."
   }
 }

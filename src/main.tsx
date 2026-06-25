@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom"
 import { HelmetProvider } from "react-helmet-async"
 import { App } from "@/App"
 import { WalletProvider } from "@/hooks/useWallet"
+import { ContractEventProvider } from "@/hooks/useContractEventContext"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import "@/index.css"
 
@@ -13,7 +14,9 @@ createRoot(document.getElementById("root")!).render(
       <HelmetProvider>
         <BrowserRouter>
           <WalletProvider>
-            <App />
+            <ContractEventProvider>
+              <App />
+            </ContractEventProvider>
           </WalletProvider>
         </BrowserRouter>
       </HelmetProvider>

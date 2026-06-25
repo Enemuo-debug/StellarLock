@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge"
 import { StatusBadge } from "@/components/ui/StatusBadge"
 import { TokenAvatar } from "@/components/ui/TokenAvatar"
 import { Button } from "@/components/ui/Button"
+import { RecentActivity } from "@/components/discover/RecentActivity"
 import { MOCK_LOCKS, TOKENS } from "@/lib/mock-data"
 import { formatAmount, formatDate, formatUsd, shortAddress } from "@/lib/utils"
 
@@ -168,6 +169,9 @@ export function Discover() {
           ))}
         </div>
       </section>
+
+      {/* Recent Activity */}
+      <RecentActivity />
     </div>
   )
 }

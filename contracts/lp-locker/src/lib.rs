@@ -162,10 +162,21 @@ impl LpLocker {
         };
 
         save_lock(&env, &lock);
-        push_index(&env, DataKey::ByCreator(creator), id);
-        push_index(&env, DataKey::ByBeneficiary(beneficiary), id);
+        push_index(&env, DataKey::ByCreator(creator.clone()), id);
+        push_index(&env, DataKey::ByBeneficiary(beneficiary.clone()), id);
 
-        env.events().publish((Symbol::new(&env, "lp_lock_created"),), id);
+        env.events().publish(
+            (
+                Symbol::new(&env, "lp_lock_created"),
+                id,
+                creator,
+                pool_share,
+                amount,
+                beneficiary,
+                unlock_at,
+            ),
+            (),
+        );
         Ok(id)
     }
 
@@ -189,7 +200,16 @@ impl LpLocker {
 
         lock.withdrawn = true;
         save_lock(&env, &lock);
-        env.events().publish((Symbol::new(&env, "lp_withdrawn"),), id);
+        env.events().publish(
+            (
+                Symbol::new(&env, "lp_lock_withdrawn"),
+                id,
+                lock.beneficiary.clone(),
+                lock.pool_share.clone(),
+                lock.amount,
+            ),
+            (),
+        );
         Ok(())
     }
 
@@ -205,11 +225,21 @@ impl LpLocker {
             return Err(ContractError::CanOnlyExtend);
         }
 
+        let old_unlock_at = lock.unlock_at;
         lock.unlock_at = new_unlock_at;
         lock.extended_count += 1;
 
         save_lock(&env, &lock);
-        env.events().publish((Symbol::new(&env, "lp_extended"),), id);
+        env.events().publish(
+            (
+                Symbol::new(&env, "lp_lock_extended"),
+                id,
+                lock.creator.clone(),
+                old_unlock_at,
+                new_unlock_at,
+            ),
+            (),
+        );
         Ok(())
     }
 
@@ -222,13 +252,22 @@ impl LpLocker {
             return Err(ContractError::AlreadyWithdrawn);
         }
 
+        let old_beneficiary = lock.beneficiary.clone();
         remove_from_index(&env, DataKey::ByBeneficiary(lock.beneficiary.clone()), id);
         push_index(&env, DataKey::ByBeneficiary(new_beneficiary.clone()), id);
 
-        lock.beneficiary = new_beneficiary;
+        lock.beneficiary = new_beneficiary.clone();
         save_lock(&env, &lock);
 
-        env.events().publish((Symbol::new(&env, "beneficiary_transferred"),), id);
+        env.events().publish(
+            (
+                Symbol::new(&env, "lp_beneficiary_transferred"),
+                id,
+                old_beneficiary,
+                new_beneficiary,
+            ),
+            (),
+        );
         Ok(())
     }
 

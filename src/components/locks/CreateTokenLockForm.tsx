@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
-import { Lock, Info, Loader2 } from "lucide-react"
+import { Lock, Info, Loader2, Calendar } from "lucide-react"
 import { Trans, useTranslation } from "react-i18next"
 import { Input, Label } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
@@ -13,6 +13,14 @@ import { ConfirmLockModal } from "@/components/locks/ConfirmLockModal"
 
 const DAY = 86_400_000
 
+type VestingTemplate = "none" | "linear6m" | "linear1y" | "linear2y" | "quarterly"
+
+interface VestingTemplateConfig {
+  label: string
+  durationMonths?: number
+  releases?: number
+}
+
 export function CreateTokenLockForm() {
   const { t } = useTranslation()
   const { address, signTransaction } = useWallet()
@@ -23,9 +31,19 @@ export function CreateTokenLockForm() {
   const [beneficiary, setBeneficiary] = useState("")
   const [unlockDate, setUnlockDate] = useState("")
   const [vesting, setVesting] = useState(false)
+  const [vestingTemplate, setVestingTemplate] = useState<VestingTemplate>("none")
+  const [vestingStartDate, setVestingStartDate] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
+
+  const vestingTemplates: Record<VestingTemplate, VestingTemplateConfig> = {
+    none: { label: t("tokenForm.vestingTemplateCustom") },
+    linear6m: { label: t("tokenForm.vestingTemplateLinear6m"), durationMonths: 6 },
+    linear1y: { label: t("tokenForm.vestingTemplateLinear1y"), durationMonths: 12 },
+    linear2y: { label: t("tokenForm.vestingTemplateLinear2y"), durationMonths: 24 },
+    quarterly: { label: t("tokenForm.vestingTemplateQuarterly"), durationMonths: 12, releases: 4 },
+  }
 
   const validTokenAddress =
     tokenAddress.trim().length === 56 && tokenAddress.trim().startsWith("C") ? tokenAddress.trim() : undefined
@@ -40,10 +58,31 @@ export function CreateTokenLockForm() {
 
   const minDate = useMemo(() => new Date(Date.now() + DAY).toISOString().slice(0, 10), [])
   const unlockTs = unlockDate ? new Date(unlockDate).getTime() : 0
+  const vestingStartTs = vestingStartDate ? new Date(vestingStartDate).getTime() : 0
   const valid = tokenAddress.trim().length > 4 && Number(amount) > 0 && unlockTs > Date.now()
 
   function applyPreset(days: number) {
     setUnlockDate(new Date(Date.now() + days * DAY).toISOString().slice(0, 10))
+  }
+
+  function applyVestingTemplate(template: VestingTemplate) {
+    setVestingTemplate(template)
+    if (template === "none") {
+      setVesting(false)
+      setVestingStartDate("")
+      setUnlockDate("")
+    } else {
+      setVesting(true)
+      const config = vestingTemplates[template]
+      const now = new Date()
+      const startDate = now.toISOString().slice(0, 10)
+      setVestingStartDate(startDate)
+
+      if (config.durationMonths) {
+        const endDate = new Date(now.getTime() + config.durationMonths * 30 * DAY)
+        setUnlockDate(endDate.toISOString().slice(0, 10))
+      }
+    }
   }
 
   function submit(e: FormEvent) {
@@ -172,18 +211,74 @@ export function CreateTokenLockForm() {
         </div>
       </div>
 
-      <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background/40 p-3">
-        <input
-          type="checkbox"
-          checked={vesting}
-          onChange={(e) => setVesting(e.target.checked)}
-          className="mt-0.5 h-4 w-4 accent-[oklch(0.78_0.16_175)]"
-        />
-        <span className="text-sm">
-          <span className="font-medium">{t("tokenForm.vestingLabel")}</span>
-          <span className="block text-muted-foreground">{t("tokenForm.vestingDesc")}</span>
-        </span>
-      </label>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="vestingTemplate">{t("tokenForm.vestingTemplate")}</Label>
+        <select
+          id="vestingTemplate"
+          value={vestingTemplate}
+          onChange={(e) => applyVestingTemplate(e.target.value as VestingTemplate)}
+          className="rounded-lg border border-border bg-background px-3 py-2 text-sm transition-colors hover:border-border/80"
+        >
+          <option value="none">{t("tokenForm.vestingTemplateCustom")}</option>
+          <option value="linear6m">{t("tokenForm.vestingTemplateLinear6m")}</option>
+          <option value="linear1y">{t("tokenForm.vestingTemplateLinear1y")}</option>
+          <option value="linear2y">{t("tokenForm.vestingTemplateLinear2y")}</option>
+          <option value="quarterly">{t("tokenForm.vestingTemplateQuarterly")}</option>
+        </select>
+        <p className="text-xs text-muted-foreground">{t("tokenForm.vestingTemplateHint")}</p>
+      </div>
+
+      {vesting && vestingTemplate !== "none" && (
+        <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">{t("tokenForm.vestingLabel")}</span>
+          </div>
+          <div className="space-y-2 text-sm">
+            <p>
+              <span className="text-muted-foreground">{t("tokenForm.vestingStart")}: </span>
+              <span className="font-medium">{vestingStartDate || formatDate(Date.now())}</span>
+            </p>
+            <p>
+              <span className="text-muted-foreground">{t("tokenForm.vestingEnd")}: </span>
+              <span className="font-medium">{unlockDate ? formatDate(new Date(unlockDate).getTime()) : "—"}</span>
+            </p>
+            {vestingTemplate === "quarterly" && (
+              <div className="mt-2 space-y-1 border-t border-primary/20 pt-2">
+                <p className="text-xs text-muted-foreground">Release schedule:</p>
+                <div className="flex gap-2 text-xs">
+                  {[1, 2, 3, 4].map((quarter) => {
+                    const startTs = vestingStartTs || Date.now()
+                    const endTs = unlockTs || Date.now()
+                    const quarterDuration = (endTs - startTs) / 4
+                    const releaseDate = new Date(startTs + quarterDuration * quarter)
+                    return (
+                      <span key={quarter} className="rounded bg-primary/10 px-2 py-1">
+                        Q{quarter}: {formatDate(releaseDate.getTime())}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {vesting && vestingTemplate === "none" && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background/40 p-3">
+          <input
+            type="checkbox"
+            checked={vesting}
+            onChange={(e) => setVesting(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-[oklch(0.78_0.16_175)]"
+          />
+          <span className="text-sm">
+            <span className="font-medium">{t("tokenForm.vestingLabel")}</span>
+            <span className="block text-muted-foreground">{t("tokenForm.vestingDesc")}</span>
+          </span>
+        </label>
+      )}
 
       <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />

@@ -8,6 +8,14 @@ import { ContractEventProvider } from "@/hooks/useContractEventContext"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import "@/index.css"
 
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // SW registration is best-effort; app works without it
+    })
+  })
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>

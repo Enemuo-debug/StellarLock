@@ -20,10 +20,13 @@ export function Navbar() {
     setMenuOpen(false)
   }, [location.pathname])
 
+  const isMac = /mac/i.test(navigator.platform)
+  const mod = isMac ? "⌘" : "Ctrl"
+
   const navLinks = [
-    { to: "/explore", label: t("nav.explore") },
-    { to: "/app/create", label: t("nav.createLock") },
-    { to: "/app/locks", label: t("nav.myLocks") },
+    { to: "/explore", label: t("nav.explore"), hint: `${mod}+K` },
+    { to: "/app/create", label: t("nav.createLock"), hint: `${mod}+N` },
+    { to: "/app/locks", label: t("nav.myLocks"), hint: `${mod}+L` },
   ]
 
   return (
@@ -43,7 +46,7 @@ export function Navbar() {
             <NavLink
               key={link.to}
               to={link.to}
-              to={link.to}
+              title={link.hint}
               className={({ isActive }) =>
                 cn(
                   "rounded-md px-3 py-2 text-sm font-medium transition-colors",

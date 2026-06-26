@@ -36,6 +36,9 @@ export function TokenLockList({ locks }: { locks: Lock[] }) {
                 {lock.kind === "lp" && lock.dex && <DexBadge dex={lock.dex} />}
                 {lock.extendedCount > 0 && <Badge variant="outline">{lock.extendedCount}× extended</Badge>}
               </span>
+              {lock.metadata?.description && (
+                <span className="text-xs text-muted-foreground line-clamp-1">{lock.metadata.description}</span>
+              )}
             </div>
 
             <div className="col-span-3 flex items-center gap-1 font-mono text-sm">

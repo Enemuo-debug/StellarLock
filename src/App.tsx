@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Routes, Route, Navigate, useLocation } from "react-router-dom"
 import { Toaster } from "react-hot-toast"
 import { Layout } from "@/components/layout/Layout"
@@ -9,13 +9,19 @@ import { LockDetail } from "@/pages/LockDetail"
 import { Explorer } from "@/pages/Explorer"
 import { Discover } from "@/pages/Discover"
 import { trackPageView } from "@/lib/analytics"
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
+import { KeyboardShortcutsModal } from "@/components/ui/KeyboardShortcutsModal"
+import { PwaUpdatePrompt } from "@/components/ui/PwaUpdatePrompt"
 
 export function App() {
   const location = useLocation()
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
 
   useEffect(() => {
     trackPageView()
   }, [location.pathname])
+
+  useKeyboardShortcuts({ onShowHelp: () => setShortcutsOpen(true) })
 
   return (
     <>
@@ -37,6 +43,8 @@ export function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
+      <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <PwaUpdatePrompt />
     </>
   )
 }

@@ -201,6 +201,12 @@
     "lock": "锁定 #{{id}}",
     "view": "查看"
   },
+  "breadcrumbs": {
+    "home": "Home",
+    "myLocks": "My Locks",
+    "lockId": "Lock #{{id}}",
+    "discover": "Discover",
+    "createLock": "Create Lock"
   "costEstimate": {
     "title": "Estimated Costs",
     "networkFee": "Transaction fee",

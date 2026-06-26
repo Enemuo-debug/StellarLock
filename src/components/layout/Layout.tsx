@@ -3,6 +3,7 @@ import { Lock } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { Navbar } from "@/components/layout/Navbar"
 import { WalletAlerts } from "@/components/layout/WalletAlerts"
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs"
 
 export function Layout() {
   const { t } = useTranslation()
@@ -17,6 +18,7 @@ export function Layout() {
       </a>
       <WalletAlerts />
       <Navbar />
+      <Breadcrumbs />
       <main id="main-content" className="flex-1">
         <Outlet />
       </main>

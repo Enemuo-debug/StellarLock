@@ -9,6 +9,7 @@ import { useWallet } from "@/hooks/useWallet"
 import { useTokenBalance } from "@/hooks/useLocks"
 import { createTokenLock } from "@/lib/token-locker"
 import { trackEvent } from "@/lib/analytics"
+import { formatDate, formatError, isValidStellarAddress } from "@/lib/utils"
 import { formatDate } from "@/lib/utils"
 import { CONTRACTS } from "@/lib/stellar"
 import { ConfirmLockModal } from "@/components/locks/ConfirmLockModal"
@@ -62,7 +63,7 @@ export function CreateTokenLockForm() {
   const minDate = useMemo(() => new Date(Date.now() + DAY).toISOString().slice(0, 10), [])
   const unlockTs = unlockDate ? new Date(unlockDate).getTime() : 0
   const vestingStartTs = vestingStartDate ? new Date(vestingStartDate).getTime() : 0
-  const valid = tokenAddress.trim().length > 4 && Number(amount) > 0 && unlockTs > Date.now()
+  const valid = isValidStellarAddress(tokenAddress.trim()) && Number(amount) > 0 && unlockTs > Date.now()
 
   // Build the contract args for cost estimation when form is sufficiently filled in
   const costArgs = useMemo((): xdr.ScVal[] | null => {
@@ -153,13 +154,7 @@ export function CreateTokenLockForm() {
     } catch (err: unknown) {
       console.error("[createLock error]", err)
       setShowConfirm(false)
-      if (err instanceof Error) {
-        setError(err.message)
-      } else if (typeof err === "object" && err !== null) {
-        setError(JSON.stringify(err, null, 2))
-      } else {
-        setError(String(err))
-      }
+      setError(formatError(err))
     } finally {
       setSubmitting(false)
     }

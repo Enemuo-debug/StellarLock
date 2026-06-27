@@ -1,17 +1,19 @@
 import { useMemo, useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
-import { Droplets, Info } from "lucide-react"
+import { Droplets, Info, ChevronDown, ChevronUp } from "lucide-react"
 import { Trans, useTranslation } from "react-i18next"
 import { Address, nativeToScVal, xdr } from "@stellar/stellar-sdk"
 import type { Dex } from "@/types/lock"
 import { Input, Label } from "@/components/ui/Input"
 import { Button } from "@/components/ui/Button"
+import { TxProgressSteps } from "@/components/ui/TxProgressSteps"
 import { cn, formatDate, isValidStellarAddress } from "@/lib/utils"
 import { useWallet } from "@/hooks/useWallet"
 import { createLpLock } from "@/lib/lp-locker"
 import { trackEvent } from "@/lib/analytics"
-import { CONTRACTS } from "@/lib/stellar"
+import { CONTRACTS, type TxPhase } from "@/lib/stellar"
 import { ConfirmLockModal } from "@/components/locks/ConfirmLockModal"
+import { isValidStellarContractAddress, isValidStellarPublicKey } from "@/lib/stellar"
 import { CostEstimate } from "@/components/locks/CostEstimate"
 
 const DAY = 86_400_000
@@ -28,7 +30,13 @@ export function CreateLpLockForm() {
   const [amount, setAmount] = useState("")
   const [unlockDate, setUnlockDate] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [txPhase, setTxPhase] = useState<TxPhase | "idle">("idle")
   const [showConfirm, setShowConfirm] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [metaOpen, setMetaOpen] = useState(false)
+  const [description, setDescription] = useState("")
+  const [projectUrl, setProjectUrl] = useState("")
+  const [logoUrl, setLogoUrl] = useState("")
 
   const dexes: { value: Dex; label: string; desc: string }[] = [
     { value: "aquarius", label: t("lpForm.aquarius"), desc: t("lpForm.aquariusDesc") },
@@ -44,7 +52,18 @@ export function CreateLpLockForm() {
 
   const minDate = useMemo(() => new Date(Date.now() + DAY).toISOString().slice(0, 10), [])
   const unlockTs = unlockDate ? new Date(unlockDate).getTime() : 0
+  const trimmedPoolShareAddress = poolShareAddress.trim()
+  const trimmedTokenA = tokenA.trim()
+  const trimmedTokenB = tokenB.trim()
+  const poolAddressValid = isValidStellarContractAddress(trimmedPoolShareAddress)
+  const tokenAValid = isValidStellarContractAddress(trimmedTokenA)
+  const tokenBValid = isValidStellarContractAddress(trimmedTokenB)
+  const beneficiaryValid = isValidStellarPublicKey(address || "")
   const valid =
+    poolAddressValid &&
+    tokenAValid &&
+    tokenBValid &&
+    beneficiaryValid &&
     isValidStellarAddress(poolShareAddress.trim()) &&
     isValidStellarAddress(tokenA.trim()) &&
     isValidStellarAddress(tokenB.trim()) &&
@@ -90,11 +109,13 @@ export function CreateLpLockForm() {
   async function submit(e: FormEvent) {
     e.preventDefault()
     if (!valid) return
+    setError(null)
     setShowConfirm(true)
   }
 
   async function confirmLock() {
     setSubmitting(true)
+    setTxPhase("simulating")
     try {
       const { id } = await createLpLock(
         {
@@ -108,11 +129,23 @@ export function CreateLpLockForm() {
         },
         address!,
         signTransaction,
+        setTxPhase,
       )
       trackEvent("lock_create_lp", { dex })
       navigate(`/app/lock/${id}`)
+    } catch (err: unknown) {
+      console.error("[createLpLock error]", err)
+      setShowConfirm(false)
+      if (err instanceof Error) {
+        setError(err.message)
+      } else if (typeof err === "object" && err !== null) {
+        setError(JSON.stringify(err, null, 2))
+      } else {
+        setError(String(err))
+      }
     } finally {
       setSubmitting(false)
+      setTxPhase("idle")
     }
   }
 
@@ -157,6 +190,7 @@ export function CreateLpLockForm() {
           value={poolShareAddress}
           onChange={(e) => setPoolShareAddress(e.target.value)}
           className="font-mono"
+          aria-invalid={!!trimmedPoolShareAddress && !poolAddressValid}
         />
         <p className="text-xs text-muted-foreground">
           {t("lpForm.poolHint", { dex: dex === "aquarius" ? t("lpForm.aquarius") : t("lpForm.soroswap") })}
@@ -172,6 +206,7 @@ export function CreateLpLockForm() {
             value={tokenA}
             onChange={(e) => setTokenA(e.target.value)}
             className="font-mono"
+            aria-invalid={!!trimmedTokenA && !tokenAValid}
           />
         </div>
         <div className="flex flex-col gap-2">
@@ -182,6 +217,7 @@ export function CreateLpLockForm() {
             value={tokenB}
             onChange={(e) => setTokenB(e.target.value)}
             className="font-mono"
+            aria-invalid={!!trimmedTokenB && !tokenBValid}
           />
         </div>
       </div>
@@ -223,6 +259,57 @@ export function CreateLpLockForm() {
         </div>
       </div>
 
+      {/* Lock Details (optional metadata) */}
+      <div className="rounded-lg border border-border">
+        <button
+          type="button"
+          onClick={() => setMetaOpen((v) => !v)}
+          className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium transition-colors hover:bg-secondary/40"
+          aria-expanded={metaOpen}
+        >
+          <span>Lock Details <span className="ml-1 text-xs font-normal text-muted-foreground">(optional)</span></span>
+          {metaOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+        </button>
+
+        {metaOpen && (
+          <div className="flex flex-col gap-4 border-t border-border px-4 pb-4 pt-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="lp-meta-desc">Description</Label>
+              <textarea
+                id="lp-meta-desc"
+                rows={3}
+                maxLength={280}
+                placeholder="Why is this lock being created? (e.g. Liquidity locked for 2 years)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <p className="text-right text-xs text-muted-foreground">{description.length}/280</p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="lp-meta-url">Project URL</Label>
+              <Input
+                id="lp-meta-url"
+                type="url"
+                placeholder="https://your-project.com"
+                value={projectUrl}
+                onChange={(e) => setProjectUrl(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="lp-meta-logo">Logo URL</Label>
+              <Input
+                id="lp-meta-logo"
+                type="url"
+                placeholder="https://your-project.com/logo.png"
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <span>
@@ -252,23 +339,39 @@ export function CreateLpLockForm() {
         <Droplets className="h-4 w-4" />
         {t("lpForm.submit")}
       </Button>
+
+      <div aria-live="polite" aria-atomic="true">
+        {error && (
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+          >
+            {error}
+          </div>
+        )}
+      </div>
     </form>
 
     {showConfirm && (
-      <ConfirmLockModal
-        data={{
-          tokenAddress: poolShareAddress.trim(),
-          amount: amount,
-          beneficiary: address!,
-          unlockDate: unlockDate,
-          isLp: true,
-          dex: dex,
-          poolShareAddress: poolShareAddress.trim(),
-        }}
-        onConfirm={confirmLock}
-        onCancel={() => setShowConfirm(false)}
-        loading={submitting}
-      />
+      <>
+        <ConfirmLockModal
+          data={{
+            tokenAddress: poolShareAddress.trim(),
+            amount: amount,
+            beneficiary: address!,
+            unlockDate: unlockDate,
+            isLp: true,
+            dex: dex,
+            poolShareAddress: poolShareAddress.trim(),
+          }}
+          onConfirm={confirmLock}
+          onCancel={() => setShowConfirm(false)}
+          loading={submitting}
+        />
+        <div className="fixed bottom-6 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 px-4">
+          <TxProgressSteps phase={txPhase} />
+        </div>
+      </>
     )}
   </>
   )

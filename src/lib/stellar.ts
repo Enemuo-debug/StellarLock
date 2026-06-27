@@ -5,6 +5,7 @@ import {
   rpc as SorobanRpc,
   TransactionBuilder,
   BASE_FEE,
+  StrKey,
   scValToNative,
   xdr,
 } from "@stellar/stellar-sdk"
@@ -45,6 +46,9 @@ const POLL_INTERVAL_MS = 1500
 const MAX_CONCURRENT = 5
 const MAX_RETRIES = 3
 const CACHE_TTL_MS = 10_000
+
+/** Phase reported via the onProgress callback during submitCall. */
+export type TxPhase = "simulating" | "signing" | "submitting" | "confirming"
 
 // ── RPC client ────────────────────────────────────────────────────────────────
 
@@ -216,6 +220,8 @@ export async function submitCall<T = void>(
   sourceAddress: string,
   signTransaction: (xdr: string) => Promise<{ signedTxXdr: string }>,
 ): Promise<T> {
+  onProgress?: (phase: TxPhase) => void,
+): Promise<void> {
   const rpc = getRpc()
   const account = await rpc.getAccount(sourceAddress)
   const contract = new Contract(contractId)
@@ -228,6 +234,7 @@ export async function submitCall<T = void>(
     .setTimeout(30)
     .build()
 
+  onProgress?.("simulating")
   const simResult = await rpc.simulateTransaction(tx)
   if (import.meta.env.DEV) console.log("[submitCall sim]", method, simResult)
 
@@ -237,8 +244,10 @@ export async function submitCall<T = void>(
 
   const preparedTx = SorobanRpc.assembleTransaction(tx, simResult).build()
 
+  onProgress?.("signing")
   const { signedTxXdr } = await signTransaction(preparedTx.toXDR())
 
+  onProgress?.("submitting")
   const sendResult = await rpc.sendTransaction(TransactionBuilder.fromXDR(signedTxXdr, NETWORK.passphrase))
   if (import.meta.env.DEV) console.log("[submitCall send]", sendResult)
 
@@ -249,6 +258,7 @@ export async function submitCall<T = void>(
   // Invalidate read cache now that a mutation has been submitted successfully
   invalidateRpcCache()
 
+  onProgress?.("confirming")
   const MAX_POLL_ATTEMPTS = 40
   let getResult = await rpc.getTransaction(sendResult.hash)
   for (let attempts = 0; getResult.status === SorobanRpc.Api.GetTransactionStatus.NOT_FOUND; attempts++) {
@@ -271,6 +281,19 @@ export async function submitCall<T = void>(
   return undefined as T
 }
 
+// ── Address helpers ─────────────────────────────────────────────────────────
+
+export function isValidStellarContractAddress(address: string): boolean {
+  return StrKey.isValidContract(address.trim())
+}
+
+export function isValidStellarPublicKey(address: string): boolean {
+  return StrKey.isValidEd25519PublicKey(address.trim())
+}
+
+export function isValidStellarAddress(address: string): boolean {
+  const trimmed = address.trim()
+  return StrKey.isValidEd25519PublicKey(trimmed) || StrKey.isValidContract(trimmed)
 // ── Cost estimation ───────────────────────────────────────────────────────────
 
 export interface LockCostEstimate {

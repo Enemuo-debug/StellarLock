@@ -1,12 +1,10 @@
 [advisories]
-vulnerability = "deny"
+# By default, vulnerabilities are denied.
+# We don't need to specify 'vulnerability = "deny"' anymore.
 
 [licenses]
-unlicensed = "deny"
-copyleft = "deny"
-# Just list the licenses you accept.
-# cargo-deny will automatically allow "MIT OR Apache-2.0"
-# because both "MIT" and "Apache-2.0" are in this list.
+# By default, unlicensed and copyleft are denied.
+# We only need to explicitly define what we choose to allow.
 allow = [
     "MIT",
     "Apache-2.0",

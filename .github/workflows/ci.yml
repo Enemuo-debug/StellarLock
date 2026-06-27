@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  frontend:
+    name: Frontend Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Uses LTS, fulfills the 18+ requirement
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (ESLint)
+        run: pnpm exec eslint .
+
+      - name: Type Check
+        run: pnpm exec tsc -b
+
+      - name: Build Vite App
+        run: pnpm build
+
+      # Uncomment when issue #12 (Frontend tests) is resolved
+      # - name: Run Frontend Tests
+      #   run: pnpm test
+
+  contracts:
+    name: Smart Contract Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./contracts
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ./contracts
+
+      - name: Install Stellar CLI
+        # Note: 'cargo install stellar-cli' takes ~15 minutes in CI.
+        # Downloading the pre-compiled binary takes 2 seconds.
+        run: |
+          wget -qO- https://github.com/stellar/stellar-cli/releases/latest/download/stellar-cli-ubuntu-x86_64.tar.gz | tar -xz
+          sudo mv stellar-cli /usr/local/bin/
+
+      - name: Build Contracts
+        run: stellar contract build
+
+      # Uncomment when issues #1 and #2 (Contract tests) are resolved
+      # - name: Run Contract Tests
+      #   run: cargo test

@@ -2,13 +2,12 @@
 vulnerability = "deny"
 
 [licenses]
+unlicensed = "deny"
+copyleft = "deny"
+# By adding the combined expression here, we tell cargo-deny
+# that this specific license pattern is acceptable.
 allow = [
     "MIT",
     "Apache-2.0",
+    "MIT OR Apache-2.0",
 ]
-
-# Tell cargo-deny to treat 'ahash' as MIT OR Apache-2.0
-# without needing to check specific file hashes.
-[[licenses.clarify]]
-name = "ahash"
-expression = "MIT OR Apache-2.0"

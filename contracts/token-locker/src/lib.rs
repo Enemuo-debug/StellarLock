@@ -181,9 +181,9 @@ impl TokenLocker {
         };
 
         save_lock(&env, &lock);
-        push_index(&env, DataKey::ByCreator(creator), id);
-        push_index(&env, DataKey::ByBeneficiary(beneficiary), id);
-        push_index(&env, DataKey::ByToken(token), id);
+push_index(&env, DataKey::ByCreator(creator.clone()), id);
+push_index(&env, DataKey::ByBeneficiary(beneficiary.clone()), id);
+push_index(&env, DataKey::ByToken(token.clone()), id);
 
         env.events().publish(
             (

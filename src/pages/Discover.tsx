@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/Badge"
 import { StatusBadge } from "@/components/ui/StatusBadge"
 import { TokenAvatar } from "@/components/ui/TokenAvatar"
 import { RecentActivity } from "@/components/discover/RecentActivity"
-import { MOCK_LOCKS } from "@/lib/mock-data"
-import { formatAmount, formatDate, formatUsd } from "@/lib/utils"
+import { SkeletonStatCard, SkeletonLockCard } from "@/components/ui/Skeleton"
+import { MOCK_LOCKS, TOKENS } from "@/lib/mock-data"
+import { formatAmount, formatDate, formatUsd, shortAddress } from "@/lib/utils"
 
 const activeLocks = MOCK_LOCKS.filter((l) => l.status !== "withdrawn")
 const totalValueLocked = activeLocks.reduce((s, l) => s + l.usdValue, 0)
